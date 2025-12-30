@@ -1,79 +1,512 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Clique & Fuga – Edição Definitiva</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        :root {
-            --bg: #020617;
-            --primary: #dc2626;
-            --accent: #06b6d4;
-            --text: #f8fafc;
+<script type="module">
+    import React, { useState, useEffect, useCallback, useRef } from 'react';
+    import ReactDOM from 'react-dom/client';
+    import { GoogleGenAI } from '@google/genai';
+
+    const MONETAG_URL = 'https://otieu.com/4/10391615';
+
+    const GameStatus = { MENU: 'MENU', PLAYING: 'PLAYING', GAMEOVER: 'GAMEOVER', ACHIEVEMENTS: 'ACHIEVEMENTS' };
+    const GameMode = { PRINCIPIANTE: 'PRINCIPIANTE', CAOTICO: 'CAOTICO', EXPERT: 'EXPERT' };
+
+    const translations = {
+        'pt': {
+            score_label: 'SCORE', time_label: 'TEMPO', nick_instruction: 'Identifique-se, Recruta!',
+            nick_placeholder: 'Seu apelido...', save_nick: 'SALVAR PERFIL', agent_label: 'Agente',
+            change_profile: '(Trocar)', mode_beginner_desc: '1 Botão • Tempo Estendido',
+            mode_chaotic_desc: '2 Botões • Reflexo Médio', mode_expert_desc: '3 Botões • Morte Súbita',
+            game_over: 'FIM DE JOGO', best_label: 'RECORDE', restart_mission: 'REINICIAR TUDO',
+            continue_mission: 'CONTINUAR COM A MESMA PONTUAÇÃO (ASSISTIR ANÚNCIO)', back_to_menu: 'MENU PRINCIPAL',
+            medal_label: 'PATENTE', achievement_unlocked: 'CONQUISTA!', achievements_title: 'CENTRAL DE CONQUISTAS',
+            waiting_ad: 'VOLTE PARA O JOGO PARA RETOMAR...', chances_label: 'Chances restantes:',
+            limit_reached: 'Limite de chances atingido', click_btn: 'CLICA AQUI', no_btn: 'NÃO CLICA',
+            default_coach: 'O treinamento continua. Não desista agora.',
+            ach_list: {
+                start: { name: 'Recruta', desc: 'Iniciou sua jornada.' },
+                bronze: { name: 'Bronze', desc: 'Alcançou 15 pontos.' },
+                silver: { name: 'Prata', desc: 'Alcançou 45 pontos.' },
+                gold: { name: 'Ouro', desc: 'Alcançou 85 pontos.' },
+                diamond: { name: 'Diamante', desc: 'Alcançou 125 pontos.' },
+                platinum: { name: 'Platina', desc: 'Alcançou 150 pontos.' },
+                master: { name: 'Especialista', desc: 'Alcançou 250 pontos.' },
+                infinite: { name: 'Infinito', desc: 'Alcançou 500 pontos!' },
+                god: { name: 'Celestial', desc: 'Alcançou 1000 pontos!' },
+                new_record: { name: 'Novo Recorde', desc: 'Superou seus limites.' }
+            },
+            ai_prompt: (s, m, b) => `Sou um jogador que fez ${s} pontos no modo ${m} do jogo "Clique & Fuga". Meu recorde é ${b}. Dê um comentário curto e sarcástico em português do Brasil.`
+        },
+        'en': {
+            score_label: 'SCORE', time_label: 'TIME', nick_instruction: 'Identify yourself, Recruit!',
+            nick_placeholder: 'Nickname...', save_nick: 'SAVE PROFILE', agent_label: 'Agent',
+            change_profile: '(Change)', mode_beginner_desc: '1 Button • Extended Time',
+            mode_chaotic_desc: '2 Buttons • Medium Reflex', mode_expert_desc: '3 Buttons • Sudden Death',
+            game_over: 'GAME OVER', best_label: 'BEST', restart_mission: 'RESTART ALL',
+            continue_mission: 'CONTINUE WITH SAME SCORE (WATCH AD)', back_to_menu: 'MAIN MENU',
+            medal_label: 'RANK', achievement_unlocked: 'ACHIEVEMENT!', achievements_title: 'ACHIEVEMENT HUB',
+            waiting_ad: 'RETURN TO GAME TO RESUME...', chances_label: 'Chances left:',
+            limit_reached: 'Chances limit reached', click_btn: 'CLICK HERE', no_btn: 'DONT CLICK',
+            default_coach: 'Training continues. Do not give up now.',
+            ach_list: {
+                start: { name: 'Recruit', desc: 'Started your journey.' },
+                bronze: { name: 'Bronze', desc: 'Reached 15 points.' },
+                silver: { name: 'Silver', desc: 'Reached 45 points.' },
+                gold: { name: 'Gold', desc: 'Reached 85 points.' },
+                diamond: { name: 'Diamond', desc: 'Reached 125 points.' },
+                platinum: { name: 'Platinum', desc: 'Reached 150 points.' },
+                master: { name: 'Expert', desc: 'Reached 250 points.' },
+                infinite: { name: 'Infinite', desc: 'Reached 500 points!' },
+                god: { name: 'Celestial', desc: 'Reached 1000 points!' },
+                new_record: { name: 'New Record', desc: 'Surpassed your limits.' }
+            },
+            ai_prompt: (s, m, b) => `I am a player who scored ${s} points in ${m} mode in "Clique & Fuga". My record is ${b}. Give a short and sarcastic comment in English.`
+        },
+        'es': {
+            score_label: 'PUNTAJE', time_label: 'TIEMPO', nick_instruction: '¡Identifícate, Recluta!',
+            nick_placeholder: 'Tu apodo...', save_nick: 'GUARDAR PERFIL', agent_label: 'Agente',
+            change_profile: '(Cambiar)', mode_beginner_desc: '1 Botón • Tiempo Extendido',
+            mode_chaotic_desc: '2 Botones • Reflejo Medio', mode_expert_desc: '3 Botones • Muerte Súbita',
+            game_over: 'FIN DEL JUEGO', best_label: 'RECORD', restart_mission: 'REINICIAR TODO',
+            continue_mission: 'CONTINUAR CON LA MISMA PUNTUACIÓN (VER ANUNCIO)', back_to_menu: 'MENÚ PRINCIPAL',
+            medal_label: 'RANGO', achievement_unlocked: '¡LOGRO!', achievements_title: 'CENTRAL DE LOGROS',
+            waiting_ad: 'REGRESA AL JUEGO PARA REANUDAR...', chances_label: 'Chances restantes:',
+            limit_reached: 'Límite de chances alcanzado', click_btn: 'CLIC AQUÍ', no_btn: 'NO CLIC',
+            default_coach: 'El entrenamiento continúa. No te rindas ahora.',
+            ach_list: {
+                start: { name: 'Recluta', desc: 'Comenzó su viaje.' },
+                bronze: { name: 'Bronce', desc: 'Alcanzó 15 puntos.' },
+                silver: { name: 'Plata', desc: 'Alcanzó 45 puntos.' },
+                gold: { name: 'Oro', desc: 'Alcanzó 85 puntos.' },
+                diamond: { name: 'Diamante', desc: 'Alcanzó 125 puntos.' },
+                platinum: { name: 'Platino', desc: 'Alcanzó 150 puntos.' },
+                master: { name: 'Experto', desc: 'Alcanzó 250 puntos.' },
+                infinite: { name: 'Infinito', desc: '¡Alcanzó 500 puntos!' },
+                god: { name: 'Celestial', desc: '¡Alcanzó 1000 puntos!' },
+                new_record: { name: 'Nuevo Récord', desc: 'Superó sus límites.' }
+            },
+            ai_prompt: (s, m, b) => `Soy un jugador que obtuvo ${s} puntos en el modo ${m} del juego "Clique & Fuga". Mi récord es ${b}. Dame un comentario corto y sarcástico en español.`
         }
+    };
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            overflow: hidden;
-            height: 100vh;
-            user-select: none;
-            touch-action: manipulation;
+    const getMedalInfo = (score) => {
+        if (score >= 1000) {
+            const level = Math.floor((score - 1000) / 250) + 1;
+            return { name: `Celestial ${level}`, icon: '🌌', color: 'text-orange-300', glow: 'shadow-[0_0_25px_rgba(251,146,60,0.7)]' };
         }
-
-        .font-orbitron { font-family: 'Orbitron', sans-serif; }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-6px); }
-            75% { transform: translateX(6px); }
+        if (score >= 500) return { name: 'Infinito', icon: '🌀', color: 'text-orange-400', glow: 'shadow-[0_0_20px_rgba(249,115,22,0.6)]' };
+        if (score >= 300) return { name: 'Imortal', icon: '🛡️', color: 'text-orange-500', glow: 'shadow-[0_0_15px_rgba(234,88,12,0.5)]' };
+        if (score >= 150) {
+            const subLevel = Math.floor((score - 150) / 15) + 1;
+            return { name: `Platina ${subLevel}`, icon: '🟣', color: 'text-purple-400', glow: 'shadow-[0_0_15px_rgba(192,132,252,0.5)]' };
         }
-        .animate-shake { animation: shake 0.15s ease-in-out 3; }
+        if (score >= 125) return { name: 'Diamante', icon: '💎', color: 'text-cyan-300', glow: 'shadow-[0_0_15px_rgba(103,232,249,0.5)]' };
+        if (score >= 85) return { name: 'Ouro', icon: '🥇', color: 'text-yellow-500', glow: '' };
+        if (score >= 45) return { name: 'Prata', icon: '🥈', color: 'text-slate-300', glow: '' };
+        if (score >= 15) return { name: 'Bronze', icon: '🥉', color: 'text-orange-700', glow: '' };
+        return null;
+    };
 
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+    const MODE_CONFIG = {
+        [GameMode.PRINCIPIANTE]: { initialTime: 5000, reduction: 45, minTime: 900, buttons: 1, scale: 0.012, darkness: 0.01 },
+        [GameMode.CAOTICO]:      { initialTime: 2500, reduction: 65, minTime: 500, buttons: 2, scale: 0.022, darkness: 0.03 },
+        [GameMode.EXPERT]:       { initialTime: 1300, reduction: 85, minTime: 300, buttons: 3, scale: 0.040, darkness: 0.05 }
+    };
 
-        /* Ambient Glows */
-        .bg-glow {
-            position: absolute;
-            width: 60vw;
-            height: 60vw;
-            border-radius: 50%;
-            filter: blur(140px);
-            opacity: 0.15;
-            pointer-events: none;
-            z-index: 0;
-            animation: pulse 4s infinite alternate;
-        }
+    const GameButton = ({ position, scale, isCorrect, t, onClick }) => {
+        const buttonStyle = isCorrect 
+            ? 'bg-[#bf360c] border-[#ff5722] shadow-[0_4px_0_#870000] active:shadow-none' 
+            : 'bg-[#ff8f00] border-[#ffb300] shadow-[0_4px_0_#c56000] active:shadow-none';
+        return (
+            <button onClick={onClick} style={{ left: `${position.x}%`, top: `${position.y}%`, transform: `translate(-50%, -50%) scale(${scale})` }}
+                className={`absolute px-4 py-2.5 md:px-6 md:py-3.5 rounded-xl border-2 transition-all duration-100 ease-out active:translate-y-1 group overflow-hidden z-10 ${buttonStyle}`}>
+                <div className="relative z-10 flex flex-col items-center justify-center whitespace-nowrap">
+                    <span className="font-orbitron font-black text-white text-sm md:text-base tracking-tight uppercase drop-shadow-sm">
+                        {isCorrect ? t.click_btn : t.no_btn}
+                    </span>
+                </div>
+                {isCorrect && <div className="absolute inset-0 bg-white/5 animate-pulse pointer-events-none" />}
+                <div className="absolute inset-0 bg-white/5 translate-y-full group-hover:translate-y-0 transition-transform duration-200" />
+            </button>
+        );
+    };
 
-        @keyframes pulse {
-            from { opacity: 0.1; transform: scale(1); }
-            to { opacity: 0.2; transform: scale(1.2); }
-        }
-    </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0"
-  }
-}
+    const Stats = ({ score, timeLeft, maxTime, playerName, t }) => {
+        const percentage = (timeLeft / maxTime) * 100;
+        const getBarColor = () => {
+            if (percentage < 30) return 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]';
+            if (percentage < 60) return 'bg-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.6)]';
+            return 'bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.6)]';
+        };
+        return (
+            <div className="absolute top-0 left-0 w-full z-40 pointer-events-none p-4 md:p-8 pt-[calc(1rem+env(safe-area-inset-top))]">
+                <div className="flex flex-col items-center w-full relative">
+                    <div className="flex flex-col items-center mb-2">
+                        <span className="text-cyan-500/60 text-[11px] font-orbitron tracking-[0.4em] uppercase font-black">{t.score_label}</span>
+                        <div className="text-white text-7xl md:text-9xl font-orbitron font-black drop-shadow-[0_0_25px_rgba(255,255,255,0.3)] leading-none -mt-1">{score}</div>
+                        <span className="text-slate-500 text-[10px] font-orbitron uppercase tracking-widest mt-1 font-bold opacity-60">OPERADOR: {playerName || 'REC_00'}</span>
+                    </div>
+                    <div className="w-full max-w-2xl mt-4">
+                        <div className="flex justify-between items-end mb-1 px-1">
+                            <span className="text-red-500/70 text-[10px] font-orbitron tracking-widest uppercase font-black">{t.time_label}</span>
+                            <div className="text-white text-2xl md:text-3xl font-orbitron font-bold tabular-nums drop-shadow-sm">{(timeLeft / 1000).toFixed(2)}s</div>
+                        </div>
+                        <div className="w-full h-3 bg-slate-900/90 rounded-full overflow-hidden border border-slate-800 backdrop-blur-md shadow-2xl">
+                            <div className={`h-full transition-all duration-75 ease-linear ${getBarColor()}`} style={{ width: `${Math.max(0, percentage)}%` }} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const GameOver = ({ score, mode, t, continueCount, onRestart, onContinue, onGoToMenu }) => {
+        const [aiCoachMsg, setAiCoachMsg] = useState(t.default_coach);
+        const best = parseInt(localStorage.getItem(`cf-best-${mode}`) || '0');
+        const medal = getMedalInfo(score);
+        const chancesLeft = 3 - continueCount;
+        useEffect(() => {
+            const getAiComment = async () => {
+                try {
+                    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+                    const response = await ai.models.generateContent({
+                        model: 'gemini-3-flash-preview',
+                        contents: t.ai_prompt(score, mode, best)
+                    });
+                    if (response.text) setAiCoachMsg(response.text.trim());
+                } catch (e) {}
+            };
+            getAiComment();
+        }, [score, mode, best, t]);
+        return (
+            <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center z-[100] p-6 animate-in fade-in zoom-in duration-300">
+                <div className="max-w-lg w-full text-center space-y-6 flex flex-col items-center">
+                    <h2 className="text-white font-orbitron text-5xl md:text-6xl font-black tracking-tighter uppercase leading-none drop-shadow-lg">{t.game_over}</h2>
+                    <p className="text-slate-400 italic text-sm px-8 min-h-[3em] flex items-center justify-center max-w-md">{aiCoachMsg}</p>
+                    {medal && (
+                        <div className="flex flex-col items-center animate-in zoom-in delay-200 duration-700 bg-white/5 p-8 rounded-full aspect-square justify-center border border-white/10 shadow-[0_0_50px_rgba(255,255,255,0.05)]">
+                            <span className="text-slate-500 font-orbitron text-[9px] uppercase tracking-[0.4em] mb-2 font-black">{t.medal_label}</span>
+                            <div className={`text-7xl mb-1 ${medal.glow} animate-pulse`}>{medal.icon}</div>
+                            <span className={`font-orbitron font-black text-2xl uppercase tracking-tighter ${medal.color}`}>{medal.name}</span>
+                        </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-4 w-full">
+                        <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl">
+                            <span className="block text-slate-500 text-[10px] font-orbitron uppercase tracking-widest font-black">{t.score_label}</span>
+                            <span className="text-white text-5xl font-orbitron font-black leading-none">{score}</span>
+                        </div>
+                        <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl">
+                            <span className="block text-slate-500 text-[10px] font-orbitron uppercase tracking-widest font-black">{t.best_label}</span>
+                            <span className="text-white text-5xl font-orbitron font-black leading-none">{best}</span>
+                        </div>
+                    </div>
+                    <div className="space-y-4 flex flex-col items-center w-full">
+                        {chancesLeft > 0 && score > 0 ? (
+                            <div className="w-full space-y-3">
+                                <button onClick={onContinue} className="w-full py-6 bg-orange-600 hover:bg-orange-500 text-white font-orbitron font-black rounded-2xl text-[10px] md:text-xs px-4 uppercase tracking-tighter shadow-[0_0_30px_rgba(249,115,22,0.5)] transition-all active:scale-95 animate-pulse">
+                                    {t.continue_mission}
+                                </button>
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="h-px w-8 bg-slate-800"></div>
+                                    <p className="text-[10px] font-orbitron uppercase text-slate-500 tracking-[0.2em] font-black">{t.chances_label} {chancesLeft} / 3</p>
+                                    <div className="h-px w-8 bg-slate-800"></div>
+                                </div>
+                            </div>
+                        ) : score > 0 && (
+                            <div className="py-4 px-6 bg-red-900/20 border border-red-500/30 rounded-2xl">
+                                <p className="text-[11px] font-orbitron uppercase text-red-500 font-black tracking-widest">⚠ {t.limit_reached}</p>
+                            </div>
+                        )}
+                        <button onClick={onRestart} className="w-full py-5 bg-red-600 hover:bg-red-500 text-white font-orbitron font-black rounded-2xl text-sm uppercase tracking-[0.3em] shadow-xl transition-all active:scale-95">{t.restart_mission}</button>
+                        <button onClick={onGoToMenu} className="w-full py-4 bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 font-orbitron font-bold rounded-2xl text-[10px] uppercase tracking-[0.2em] transition-all border border-slate-700/50">{t.back_to_menu}</button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const AchievementToast = ({ achievement, t, onClose }) => {
+        useEffect(() => {
+            const timer = setTimeout(onClose, 4500);
+            return () => clearTimeout(timer);
+        }, [onClose]);
+        const achInfo = t.ach_list[achievement.id] || { name: achievement.id, desc: '' };
+        return (
+            <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[300] w-full max-w-sm px-4 animate-in slide-in-from-top-10 duration-700">
+                <div className="bg-slate-900/95 backdrop-blur-2xl border-2 border-yellow-500/60 rounded-3xl p-5 flex items-center gap-5 shadow-[0_0_40px_rgba(234,179,8,0.3)] ring-1 ring-white/10">
+                    <div className="text-4xl filter drop-shadow-[0_0_10px_rgba(234,179,8,0.8)] animate-pulse">🏆</div>
+                    <div className="flex-1">
+                        <p className="text-yellow-500 font-orbitron text-[11px] uppercase tracking-[0.2em] font-black leading-none mb-1.5">{t.achievement_unlocked}</p>
+                        <h4 className="text-white font-orbitron font-black text-lg uppercase tracking-tighter leading-tight">{achInfo.name}</h4>
+                        <p className="text-slate-400 text-[12px] leading-tight font-medium">{achInfo.desc}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const AchievementScreen = ({ t, onBack }) => {
+        const saved = localStorage.getItem('cf-achievements');
+        const unlocked = saved ? JSON.parse(saved) : [];
+        const unlockedMap = new Map(unlocked.map(a => [a.id, a]));
+        const ALL_POSSIBLE_ACHIEVEMENTS = [
+            { id: 'start', icon: '🚩' }, { id: 'bronze', icon: '🥉' }, { id: 'silver', icon: '🥈' }, { id: 'gold', icon: '🥇' },
+            { id: 'diamond', icon: '💎' }, { id: 'platinum', icon: '🟣' }, { id: 'master', icon: '👑' },
+            { id: 'infinite', icon: '🌀' }, { id: 'god', icon: '🌌' }, { id: 'new_record', icon: '🚀' }
+        ];
+        return (
+            <div className="absolute inset-0 bg-slate-950 z-[150] flex flex-col p-6 overflow-y-auto custom-scrollbar animate-in slide-in-from-right duration-500">
+                <div className="max-w-4xl mx-auto w-full">
+                    <header className="flex items-center justify-between mb-8 sticky top-0 bg-slate-950 py-4 z-10 border-b border-white/10">
+                        <h2 className="text-white font-orbitron text-2xl md:text-3xl font-black tracking-tighter uppercase">{t.achievements_title}</h2>
+                        <button onClick={onBack} className="p-3 bg-slate-900 hover:bg-slate-800 text-white font-orbitron text-xs rounded-xl border border-white/10 transition-all active:scale-95">VOLTAR</button>
+                    </header>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-12">
+                        {ALL_POSSIBLE_ACHIEVEMENTS.map(pa => {
+                            const data = unlockedMap.get(pa.id);
+                            const isUnlocked = !!data;
+                            const achInfo = t.ach_list[pa.id] || { name: pa.id, desc: '' };
+                            return (
+                                <div key={pa.id} className={`p-5 rounded-2xl border-2 transition-all flex items-center gap-5 ${isUnlocked ? 'bg-slate-900 border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.15)]' : 'bg-slate-900/40 border-slate-800 opacity-60'}`}>
+                                    <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl shrink-0 transition-transform duration-500 ${isUnlocked ? 'bg-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.4)] animate-pulse scale-110' : 'bg-slate-800/50 opacity-30 scale-90'}`}>{pa.icon}</div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className={`font-orbitron font-bold text-sm uppercase tracking-tighter ${isUnlocked ? 'text-white' : 'text-slate-500'}`}>{achInfo.name}</h4>
+                                            {!isUnlocked && <span className="text-[10px]">🔒</span>}
+                                        </div>
+                                        <p className="text-slate-500 text-[11px] leading-tight mb-2">{achInfo.desc}</p>
+                                        {isUnlocked && <div className="flex items-center gap-3 text-[9px] font-orbitron uppercase tracking-widest text-cyan-500/80"><span>Score: {data.score}</span><span>•</span><span>{new Date(data.unlockedAt).toLocaleDateString()}</span></div>}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const Menu = ({ onStart, onOpenAchievements, playerName, isNameSaved, onSaveName, t }) => {
+        const [localName, setLocalName] = useState(playerName);
+        const getHighScore = (mode) => localStorage.getItem(`cf-best-${mode}`) ? parseInt(localStorage.getItem(`cf-best-${mode}`), 10) : 0;
+        const getAchievementsCount = () => {
+            const saved = localStorage.getItem('cf-achievements');
+            return saved ? JSON.parse(saved).length : 0;
+        };
+        const renderModeButton = (mode, label, desc, bgColor) => {
+            const score = getHighScore(mode);
+            const medal = getMedalInfo(score);
+            return (
+                <button onClick={(e) => { e.stopPropagation(); onStart(mode); }} className={`group relative p-4 ${bgColor} rounded-xl transition-all hover:scale-[1.02] active:scale-95 flex justify-between items-center border border-white/10 shadow-lg`}>
+                    <div className="text-left flex items-center gap-3">{medal && <div className="text-2xl drop-shadow-md">{medal.icon}</div>}<div><span className="block font-orbitron font-black text-lg text-white uppercase leading-none">{label}</span><span className="text-[9px] text-white/60 font-orbitron uppercase tracking-wider">{desc}</span></div></div>
+                    <div className="text-right"><span className="text-white/40 font-orbitron text-[9px] block uppercase">{t.best_label}</span><span className="font-orbitron font-bold text-white text-xl leading-none">{score}</span></div>
+                </button>
+            );
+        };
+        return (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center animate-in fade-in slide-in-from-bottom-10 duration-500 z-30 overflow-y-auto custom-scrollbar">
+                <div className="mb-8"><h1 className="text-white font-orbitron text-5xl md:text-8xl font-black tracking-tighter mb-2 leading-tight">CLIQUE <span className="text-red-500">&</span> FUGA</h1><div className="w-32 h-1 bg-red-600 mx-auto rounded-full"></div></div>
+                {!isNameSaved ? (
+                    <div className="w-full max-w-xs md:max-w-md animate-in fade-in zoom-in duration-300">
+                        <p className="text-slate-400 text-base md:text-lg mb-6 font-light">{t.nick_instruction}</p>
+                        <div className="flex flex-col gap-3">
+                            <input type="text" placeholder={t.nick_placeholder} value={localName} onChange={(e) => setLocalName(e.target.value.substring(0, 10))} className="w-full bg-black border border-slate-700 rounded-xl p-4 text-center font-orbitron text-white text-lg outline-none focus:border-red-500 transition-all" />
+                            <button onClick={(e) => { e.stopPropagation(); onSaveName(localName); }} className="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-orbitron font-bold rounded-xl transition-all shadow-lg active:scale-95 text-sm uppercase tracking-widest">{t.save_nick}</button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="animate-in fade-in slide-in-from-top-4 duration-500 w-full max-w-sm">
+                        <div className="mb-8 flex flex-col items-center"><span className="text-slate-500 font-orbitron text-[10px] uppercase tracking-[0.3em]">{t.agent_label}</span><span className="text-cyan-400 font-orbitron text-2xl font-bold">{playerName}</span>
+                            <div className="flex items-center gap-2 mt-2">
+                                <button onClick={(e) => { e.stopPropagation(); onOpenAchievements(); }} className="text-[10px] bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 px-3 py-1 rounded-full font-orbitron uppercase text-cyan-400 transition-all active:scale-95">🏆 {getAchievementsCount()} Conquistas</button>
+                                <button onClick={(e) => { e.stopPropagation(); localStorage.removeItem('player-name'); window.location.reload(); }} className="text-[9px] text-slate-600 hover:text-slate-400 font-orbitron uppercase transition-colors">{t.change_profile}</button>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-3 w-full">
+                            {renderModeButton(GameMode.PRINCIPIANTE, 'Principiante', t.mode_beginner_desc, 'bg-emerald-600/90 hover:bg-emerald-500')}
+                            {renderModeButton(GameMode.CAOTICO, 'Caótico', t.mode_chaotic_desc, 'bg-orange-600/90 hover:bg-orange-500')}
+                            {renderModeButton(GameMode.EXPERT, 'Expert', t.mode_expert_desc, 'bg-red-700/90 hover:bg-red-600')}
+                        </div>
+                    </div>
+                )}
+                <div className="mt-8 text-slate-600 text-[9px] font-orbitron tracking-widest uppercase opacity-50">Não clique nos impostores • Mantenha o foco</div>
+            </div>
+        );
+    };
+
+    const App = () => {
+        const [status, setStatus] = useState(GameStatus.MENU);
+        const [mode, setMode] = useState(GameMode.PRINCIPIANTE);
+        const [score, setScore] = useState(0);
+        const [timeLeft, setTimeLeft] = useState(0);
+        const [maxTime, setMaxTime] = useState(0);
+        const [buttons, setButtons] = useState([]);
+        const [buttonScale, setButtonScale] = useState(1);
+        const [overlayOpacity, setOverlayOpacity] = useState(0);
+        const [isShaking, setIsShaking] = useState(false);
+        const [playerName, setPlayerName] = useState(localStorage.getItem('player-name') || '');
+        const [isNameSaved, setIsNameSaved] = useState(!!localStorage.getItem('player-name'));
+        const [continueCount, setContinueCount] = useState(0);
+        const [language, setLanguage] = useState('pt');
+        const [isWaitingForAd, setIsWaitingForAd] = useState(false);
+        const [pendingAction, setPendingAction] = useState(null);
+        const [newAchievement, setNewAchievement] = useState(null);
+        const timerRef = useRef(null);
+        const audioCtxRef = useRef(null);
+
+        useEffect(() => {
+            const browserLang = (navigator.language || 'pt').split('-')[0];
+            setLanguage(translations[browserLang] ? browserLang : 'pt');
+        }, []);
+
+        const t = translations[language] || translations['pt'];
+
+        const initAudio = useCallback(() => {
+            if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
+        }, []);
+
+        const playSfx = useCallback((freq, type = 'sine', vol = 0.08, dur = 0.1) => {
+            if (!audioCtxRef.current || audioCtxRef.current.state !== 'running') return;
+            const osc = audioCtxRef.current.createOscillator();
+            const g = audioCtxRef.current.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtxRef.current.currentTime);
+            g.gain.setValueAtTime(vol, audioCtxRef.current.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, audioCtxRef.current.currentTime + dur);
+            osc.connect(g);
+            g.connect(audioCtxRef.current.destination);
+            osc.start(); osc.stop(audioCtxRef.current.currentTime + dur);
+        }, []);
+
+        const checkAchievements = useCallback((finalScore) => {
+            const achievements = localStorage.getItem('cf-achievements') ? JSON.parse(localStorage.getItem('cf-achievements')) : [];
+            const unlockedIds = new Set(achievements.map(a => a.id));
+            const possible = [
+                { id: 'start', threshold: 1 }, { id: 'bronze', threshold: 15 }, { id: 'silver', threshold: 45 },
+                { id: 'gold', threshold: 85 }, { id: 'diamond', threshold: 125 }, { id: 'platinum', threshold: 150 },
+                { id: 'master', threshold: 250 }, { id: 'infinite', threshold: 500 }, { id: 'god', threshold: 1000 }
+            ];
+            let newly = null;
+            possible.forEach(pa => {
+                if (finalScore >= pa.threshold && !unlockedIds.has(pa.id)) {
+                    const ach = { id: pa.id, unlockedAt: Date.now(), score: finalScore };
+                    achievements.push(ach); unlockedIds.add(pa.id); newly = ach;
+                }
+            });
+            if (newly) {
+                localStorage.setItem('cf-achievements', JSON.stringify(achievements));
+                setNewAchievement(newly);
+                playSfx(523.25, 'square', 0.1, 0.4);
+            }
+        }, [playSfx]);
+
+        const findSafePosition = useCallback((existing, scale) => {
+            const HUD_RESERVED_Y = 28; const MARGIN = 12;
+            const MIN_DIST_X = 20 * scale; const MIN_DIST_Y = 16 * scale;
+            for (let i = 0; i < 250; i++) {
+                const cand = { x: MARGIN + Math.random() * (100 - MARGIN * 2), y: HUD_RESERVED_Y + Math.random() * (100 - HUD_RESERVED_Y - MARGIN) };
+                if (!existing.some(p => Math.abs(p.x - cand.x) < MIN_DIST_X && Math.abs(p.y - cand.y) < MIN_DIST_Y)) return cand;
+            }
+            return scale > 0.4 ? findSafePosition(existing, scale * 0.8) : { x: 50, y: 50 };
+        }, []);
+
+        const generateButtons = useCallback((count, scale) => {
+            const newB = []; const pos = []; const corrIdx = Math.floor(Math.random() * count);
+            for (let i = 0; i < count; i++) {
+                const p = findSafePosition(pos, scale); pos.push(p);
+                newB.push({ id: Date.now() + i, position: p, isCorrect: i === corrIdx });
+            }
+            setButtons(newB);
+        }, [findSafePosition]);
+
+        const endGame = useCallback(() => {
+            setStatus(GameStatus.GAMEOVER); clearInterval(timerRef.current);
+            checkAchievements(score);
+            const key = `cf-best-${mode}`;
+            if (score > (parseInt(localStorage.getItem(key)) || 0)) localStorage.setItem(key, score.toString());
+        }, [score, mode, checkAchievements]);
+
+        const startGame = (sel) => {
+            initAudio(); const cfg = MODE_CONFIG[sel];
+            setMode(sel); setScore(0); setContinueCount(0); setMaxTime(cfg.initialTime);
+            setTimeLeft(cfg.initialTime); setButtonScale(1); setOverlayOpacity(0);
+            setStatus(GameStatus.PLAYING); generateButtons(cfg.buttons, 1);
+        };
+
+        const continueAfterAd = () => {
+            if (continueCount >= 3) return;
+            initAudio(); window.open(MONETAG_URL, '_blank');
+            setIsWaitingForAd(true);
+            setPendingAction(() => () => {
+                setContinueCount(c => c + 1); const cfg = MODE_CONFIG[mode];
+                const safeT = Math.max(cfg.minTime, cfg.initialTime - (score * cfg.reduction));
+                setMaxTime(safeT); setTimeLeft(safeT); setStatus(GameStatus.PLAYING);
+                generateButtons(cfg.buttons, buttonScale);
+            });
+        };
+
+        useEffect(() => {
+            const handleRet = () => {
+                if (document.visibilityState === 'visible' && isWaitingForAd && pendingAction) {
+                    setIsWaitingForAd(false); pendingAction(); setPendingAction(null);
+                }
+            };
+            window.addEventListener('visibilitychange', handleRet);
+            window.addEventListener('focus', handleRet);
+            return () => { window.removeEventListener('visibilitychange', handleRet); window.removeEventListener('focus', handleRet); };
+        }, [isWaitingForAd, pendingAction]);
+
+        const handleBackgroundClick = (e) => {
+            if (status !== GameStatus.PLAYING || isWaitingForAd || e.target.closest('button')) return;
+            setIsShaking(true); setTimeout(() => setIsShaking(false), 300);
+            playSfx(110, 'sawtooth', 0.4, 0.3); endGame();
+        };
+
+        const handleButtonClick = (e, isCorr) => {
+            e.stopPropagation(); if (status !== GameStatus.PLAYING || isWaitingForAd) return;
+            if (!isCorr) { playSfx(110, 'sawtooth', 0.4, 0.3); endGame(); return; }
+            playSfx(880, 'sine', 0.05, 0.08);
+            const cfg = MODE_CONFIG[mode]; const newS = score + 1; setScore(newS);
+            const nextT = Math.max(cfg.minTime, cfg.initialTime - (newS * cfg.reduction));
+            const nextSc = Math.max(0.4, 1.3 - (newS * cfg.scale));
+            setMaxTime(nextT); setTimeLeft(nextT); setButtonScale(nextSc);
+            if (mode !== GameMode.PRINCIPIANTE) setOverlayOpacity(Math.min(0.85, newS * cfg.darkness));
+            generateButtons(cfg.buttons, nextSc);
+        };
+
+        useEffect(() => {
+            if (status === GameStatus.PLAYING && !isWaitingForAd) {
+                timerRef.current = setInterval(() => {
+                    setTimeLeft(p => {
+                        if (p <= 0) { endGame(); return 0; }
+                        return p - 10;
+                    });
+                }, 10);
+            }
+            return () => clearInterval(timerRef.current);
+        }, [status, endGame, isWaitingForAd]);
+
+        return (
+            <div className={`relative w-full h-screen bg-slate-950 overflow-hidden transition-all duration-300 ${isShaking ? 'animate-shake' : ''}`} onClick={handleBackgroundClick}>
+                <div className="absolute inset-0 bg-black pointer-events-none z-10 transition-opacity duration-300" style={{ opacity: overlayOpacity }} />
+                {isWaitingForAd && (
+                    <div className="absolute inset-0 z-[200] bg-slate-950/90 backdrop-blur-3xl flex flex-col items-center justify-center p-8 text-center">
+                       <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-6"></div>
+                       <h2 className="text-orange-500 font-orbitron font-black text-2xl animate-pulse">{t.waiting_ad}</h2>
+                    </div>
+                )}
+                {newAchievement && <AchievementToast achievement={newAchievement} t={t} onClose={() => setNewAchievement(null)} />}
+                {status === GameStatus.MENU && <Menu onStart={startGame} onOpenAchievements={() => setStatus(GameStatus.ACHIEVEMENTS)} playerName={playerName} isNameSaved={isNameSaved} onSaveName={(n) => { n = n.trim().substring(0,10); if (n) { setPlayerName(n); setIsNameSaved(true); localStorage.setItem('player-name', n); initAudio(); } }} t={t} />}
+                {status === GameStatus.ACHIEVEMENTS && <AchievementScreen t={t} onBack={() => setStatus(GameStatus.MENU)} />}
+                {status === GameStatus.PLAYING && (
+                    <>
+                        <Stats score={score} timeLeft={timeLeft} maxTime={maxTime} playerName={playerName} t={t} />
+                        {buttons.map(btn => <GameButton key={btn.id} position={btn.position} scale={buttonScale} isCorrect={btn.isCorrect} t={t} onClick={(e) => handleButtonClick(e, btn.isCorrect)} />)}
+                    </>
+                )}
+                {status === GameStatus.GAMEOVER && <GameOver score={score} mode={mode} t={t} continueCount={continueCount} onRestart={() => startGame(mode)} onContinue={continueAfterAd} onGoToMenu={() => setStatus(GameStatus.MENU)} />}
+            </div>
+        );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
 </script>
-</head>
-<body class="relative bg-slate-950">
-    <!-- Ambient Decoration -->
-    <div class="bg-glow top-0 left-0 bg-blue-600"></div>
-    <div class="bg-glow bottom-0 right-0 bg-red-600" style="animation-delay: 1s"></div>
-
-    <div id="root" class="relative z-10 w-full h-full"></div>
-    
-    <script type="module" src="index.tsx"></script>
-</body>
-</html>
