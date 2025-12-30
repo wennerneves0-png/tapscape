@@ -2,58 +2,321 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Clique & Fuga – Edição Definitiva</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clique & Fuga – Modo Caos</title>
+    <!-- Fonte Orbitron para um visual futurista -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #020617;
-            --primary: #dc2626;
-            --accent: #06b6d4;
-            --text: #f8fafc;
+            --bg-color: #020617;
+            --primary: #dc2626; /* Vermelho */
+            --primary-hover: #ef4444;
+            --accent: #06b6d4; /* Ciano */
+            --success: #10b981; /* Verde esmeralda para o CPA */
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             height: 100vh;
-            user-select: none;
-            touch-action: manipulation;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .font-orbitron { font-family: 'Orbitron', sans-serif; }
 
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-6px); }
-            75% { transform: translateX(6px); }
-        }
-        .animate-shake { animation: shake 0.15s ease-in-out 3; }
-
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
-
-        /* Ambient Glows */
-        .bg-glow {
+        /* --- TELAS --- */
+        .screen {
             position: absolute;
-            width: 60vw;
-            height: 60vw;
-            border-radius: 50%;
-            filter: blur(140px);
-            opacity: 0.15;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+            z-index: 20;
+        }
+
+        .screen.active { display: flex; }
+
+        /* --- BACKGROUND DECOR --- */
+        .bg-decor {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
             pointer-events: none;
-            z-index: 0;
+            opacity: 0.15;
+        }
+
+        .glow {
+            position: absolute;
+            width: 40vw;
+            height: 40vw;
+            border-radius: 50%;
+            filter: blur(120px);
             animation: pulse 4s infinite alternate;
         }
 
         @keyframes pulse {
-            from { opacity: 0.1; transform: scale(1); }
-            to { opacity: 0.2; transform: scale(1.2); }
+            from { opacity: 0.5; transform: scale(1); }
+            to { opacity: 1; transform: scale(1.1); }
+        }
+
+        /* --- MENU --- */
+        h1 {
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+        h1 span { color: var(--primary); }
+
+        .subtitle {
+            color: var(--text-muted);
+            margin-bottom: 3rem;
+            max-width: 400px;
+        }
+
+        .mode-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .btn-mode {
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 1rem;
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .btn-mode:hover { transform: scale(1.03); background: #334155; }
+        .btn-mode .info { text-align: left; }
+        .btn-mode .info b { display: block; font-family: 'Orbitron'; font-size: 1.1rem; }
+        .btn-mode .info small { color: var(--text-muted); font-size: 0.75rem; }
+        .btn-mode .record { text-align: right; }
+        .btn-mode .record small { display: block; font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; }
+        .btn-mode .record span { font-family: 'Orbitron'; font-weight: bold; font-size: 1.2rem; }
+
+        .btn-mode.principiante { border-left: 4px solid #10b981; }
+        .btn-mode.caotico { border-left: 4px solid #f59e0b; }
+        .btn-mode.expert { border-left: 4px solid #ef4444; }
+
+        /* --- JOGO --- */
+        #game-area {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+        }
+
+        .stats {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 2rem;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        .stats-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 1rem;
+        }
+
+        .score-label, .time-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+            letter-spacing: 2px;
+        }
+
+        #current-score { font-size: 4rem; font-weight: 900; line-height: 1; }
+        #current-time { font-size: 1.5rem; font-weight: 700; }
+
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 100%;
+            background: var(--accent);
+            transition: width 0.1s linear, background 0.3s;
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .target-button {
+            position: absolute;
+            padding: 1rem 1.5rem;
+            border-radius: 16px;
+            border: 2px solid transparent;
+            font-family: 'Orbitron';
+            font-weight: 900;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 25;
+            white-space: nowrap;
+        }
+
+        .target-button.correct {
+            background: var(--primary);
+            border-color: #f87171;
+            box-shadow: 0 0 30px rgba(220, 38, 38, 0.4);
+        }
+
+        .target-button.decoy {
+            background: #1e293b;
+            border-color: #475569;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .target-button:active { transform: translate(-50%, -50%) scale(0.9) !important; }
+
+        /* --- OVERLAYS --- */
+        #caos-overlay {
+            position: absolute;
+            inset: 0;
+            background: black;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 28;
+            transition: opacity 0.5s;
+        }
+
+        /* --- GAME OVER --- */
+        .game-over-card {
+            background: #0f172a;
+            border: 2px solid #1e293b;
+            padding: 2rem;
+            border-radius: 32px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .go-title { color: var(--primary); font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .ai-comment { font-style: italic; color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem; min-height: 2.5rem; }
+
+        .go-stats { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-box {
+            flex: 1;
+            background: #1e293b;
+            padding: 1rem;
+            border-radius: 16px;
+        }
+        .stat-box small { display: block; font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+        .stat-box b { font-size: 1.8rem; display: block; }
+
+        /* --- CPA SECTION --- */
+        .cpa-container {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(51, 65, 85, 0.5);
+            border-radius: 20px;
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+            animation: fadeInCPA 0.8s ease-out forwards;
+        }
+        .cpa-text {
+            color: var(--text-main);
+            font-size: 0.85rem;
+            margin-bottom: 0.8rem;
+            font-weight: 500;
+        }
+        .btn-cpa {
+            display: inline-block;
+            background: var(--success);
+            color: white;
+            padding: 0.7rem 1.8rem;
+            border-radius: 12px;
+            font-family: 'Orbitron';
+            font-weight: 900;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        .btn-cpa:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        @keyframes fadeInCPA {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .btn-main {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 12px;
+            border: none;
+            font-family: 'Orbitron';
+            font-weight: 900;
+            cursor: pointer;
+            margin-bottom: 0.6rem;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        .btn-restart { background: var(--primary); color: white; }
+        .btn-restart:hover { background: var(--primary-hover); transform: translateY(-2px); }
+        .btn-menu { background: transparent; border: 1px solid #334155; color: var(--text-muted); }
+        .btn-menu:hover { background: #1e293b; color: white; }
+
+        /* --- ANIMAÇÕES --- */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .shake { animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both; }
+
+        .ad-space {
+            margin-top: 2rem;
+            padding: 10px;
+            border: 1px dashed #334155;
+            color: #334155;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            border-radius: 8px;
+        }
+
+        @media (max-width: 600px) {
+            .stats { padding: 1rem; }
+            #current-score { font-size: 3rem; }
+            .game-over-card { padding: 1.5rem; }
+            h1 { font-size: 2.5rem; }
         }
     </style>
 <script type="importmap">
@@ -67,13 +330,346 @@
 }
 </script>
 </head>
-<body class="relative bg-slate-950">
-    <!-- Ambient Decoration -->
-    <div class="bg-glow top-0 left-0 bg-blue-600"></div>
-    <div class="bg-glow bottom-0 right-0 bg-red-600" style="animation-delay: 1s"></div>
+<body>
 
-    <div id="root" class="relative z-10 w-full h-full"></div>
-    
-    <script type="module" src="index.tsx"></script>
+    <!-- Background Animado -->
+    <div class="bg-decor">
+        <div class="glow" style="top: 10%; left: 10%; background: #991b1b;"></div>
+        <div class="glow" style="bottom: 10%; right: 10%; background: #1e3a8a;"></div>
+    </div>
+
+    <!-- Overlay de Escuridão -->
+    <div id="caos-overlay"></div>
+
+    <!-- TELA: MENU -->
+    <div id="menu-screen" class="screen active">
+        <h1 class="font-orbitron">CLIQUE <span>&</span> FUGA</h1>
+        <p class="subtitle">O botão encolhe. O tempo acelera. Você sobrevive ao caos?</p>
+        
+        <div class="mode-list">
+            <button class="btn-mode principiante" onclick="startGame('PRINCIPIANTE')">
+                <div class="info">
+                    <b>PRINCIPIANTE</b>
+                    <small>1 Botão • Lento • Para treinar</small>
+                </div>
+                <div class="record">
+                    <small>Best</small>
+                    <span id="record-PRINCIPIANTE">0</span>
+                </div>
+            </button>
+            <button class="btn-mode caotico" onclick="startGame('CAOTICO')">
+                <div class="info">
+                    <b>CAÓTICO</b>
+                    <small>2 Botões • Médio • Escuridão</small>
+                </div>
+                <div class="record">
+                    <small>Best</small>
+                    <span id="record-CAOTICO">0</span>
+                </div>
+            </button>
+            <button class="btn-mode expert" onclick="startGame('EXPERT')">
+                <div class="info">
+                    <b>EXPERT</b>
+                    <small>3 Botões • Insano • Erro = Fim</small>
+                </div>
+                <div class="record">
+                    <small>Best</small>
+                    <span id="record-EXPERT">0</span>
+                </div>
+            </button>
+        </div>
+        
+        <div class="ad-space">Espaço para Anúncio</div>
+    </div>
+
+    <!-- TELA: JOGO -->
+    <div id="game-screen" class="screen">
+        <div class="stats">
+            <div class="stats-top">
+                <div class="font-orbitron">
+                    <div class="score-label">Pontos</div>
+                    <div id="current-score">0</div>
+                </div>
+                <div class="font-orbitron text-right">
+                    <div class="time-label">Tempo</div>
+                    <div id="current-time">0.00s</div>
+                </div>
+            </div>
+            <div class="progress-container">
+                <div id="progress-bar"></div>
+            </div>
+        </div>
+        
+        <div id="game-area" onclick="handleBackgroundClick()">
+            <!-- Botões injetados via JS -->
+        </div>
+    </div>
+
+    <!-- TELA: GAME OVER -->
+    <div id="gameover-screen" class="screen">
+        <div class="game-over-card">
+            <h2 class="font-orbitron go-title">GAME OVER</h2>
+            <div id="go-mode-label" style="font-size: 0.7rem; color: var(--primary); margin-bottom: 0.5rem; font-family: 'Orbitron';">MODO EXPERT</div>
+            <p id="ai-comment" class="ai-comment">"Você foi lento demais..."</p>
+            
+            <div class="go-stats">
+                <div class="stat-box">
+                    <small>Pontos</small>
+                    <b id="final-score" class="font-orbitron">0</b>
+                </div>
+                <div class="stat-box">
+                    <small>Melhor</small>
+                    <b id="final-best" class="font-orbitron">0</b>
+                </div>
+            </div>
+
+            <!-- CPA MONETIZATION BOX -->
+            <div class="cpa-container">
+                <p class="cpa-text">🎮 Quer tentar outro desafio?</p>
+                <a href="https://otieu.com/4/10391615" target="_blank" class="btn-cpa">Jogar agora</a>
+            </div>
+            
+            <button class="btn-main btn-restart" onclick="restartGame()">JOGAR NOVAMENTE</button>
+            <button class="btn-main btn-menu" onclick="showMenu()">TROCAR MODO</button>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURAÇÕES DE DIFICULDADE
+        const MODE_CONFIG = {
+            PRINCIPIANTE: {
+                initialTime: 3000,
+                minTime: 700,
+                timeReduction: 40,
+                scaleReduction: 0.015,
+                darknessIncrease: 0.01,
+                buttonCount: 1,
+                initialScale: 1.2
+            },
+            CAOTICO: {
+                initialTime: 2000,
+                minTime: 400,
+                timeReduction: 60,
+                scaleReduction: 0.025,
+                darknessIncrease: 0.03,
+                buttonCount: 2,
+                initialScale: 1.0
+            },
+            EXPERT: {
+                initialTime: 1200,
+                minTime: 250,
+                timeReduction: 80,
+                scaleReduction: 0.045,
+                darknessIncrease: 0.05,
+                buttonCount: 3,
+                initialScale: 0.8
+            }
+        };
+
+        // ESTADO GLOBAL
+        let currentMode = 'PRINCIPIANTE';
+        let score = 0;
+        let timeLeft = 0;
+        let maxTime = 0;
+        let gameActive = false;
+        let gameTimer = null;
+        let buttonScale = 1;
+        let overlayOpacity = 0;
+
+        // Comentários do "Coach"
+        const COMMENTS = [
+            "Minha avó clicava mais rápido.",
+            "Foi por pouco? Não, foi bem longe.",
+            "O botão venceu de novo...",
+            "Tente usar os olhos da próxima vez.",
+            "O caos te consumiu totalmente!",
+            "Rápido como uma tartaruga manchada.",
+            "Você estava jogando ou dormindo?",
+            "Um clique em falso e tudo desmoronou.",
+            "Desempenho... questionável.",
+            "O botão ri da sua lentidão."
+        ];
+
+        // INICIALIZAÇÃO
+        window.onload = () => {
+            updateRecordsDisplay();
+        };
+
+        function updateRecordsDisplay() {
+            ['PRINCIPIANTE', 'CAOTICO', 'EXPERT'].forEach(m => {
+                const rec = localStorage.getItem(`clique-fuga-record-${m}`) || 0;
+                const el = document.getElementById(`record-${m}`);
+                if (el) el.innerText = rec;
+            });
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // LÓGICA DO JOGO
+        function startGame(mode) {
+            currentMode = mode;
+            const config = MODE_CONFIG[mode];
+            
+            score = 0;
+            timeLeft = config.initialTime;
+            maxTime = config.initialTime;
+            buttonScale = config.initialScale;
+            overlayOpacity = 0;
+            gameActive = true;
+
+            document.getElementById('current-score').innerText = '0';
+            document.getElementById('caos-overlay').style.opacity = '0';
+            
+            showScreen('game-screen');
+            generateButtons();
+            startTimer();
+        }
+
+        function restartGame() {
+            startGame(currentMode);
+        }
+
+        function showMenu() {
+            updateRecordsDisplay();
+            showScreen('menu-screen');
+        }
+
+        function startTimer() {
+            if (gameTimer) clearInterval(gameTimer);
+            
+            const interval = 10;
+            gameTimer = setInterval(() => {
+                if (!gameActive) return;
+
+                timeLeft -= interval;
+                updateUI();
+
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, interval);
+        }
+
+        function updateUI() {
+            const timeDisplay = document.getElementById('current-time');
+            const progressBar = document.getElementById('progress-bar');
+            
+            const seconds = (Math.max(0, timeLeft) / 1000).toFixed(2);
+            timeDisplay.innerText = `${seconds}s`;
+
+            const percentage = (timeLeft / maxTime) * 100;
+            progressBar.style.width = `${percentage}%`;
+
+            if (percentage < 30) {
+                progressBar.style.background = '#ef4444';
+                progressBar.style.boxShadow = '0 0 15px #ef4444';
+            } else if (percentage < 60) {
+                progressBar.style.background = '#f59e0b';
+                progressBar.style.boxShadow = '0 0 10px #f59e0b';
+            } else {
+                progressBar.style.background = '#06b6d4';
+                progressBar.style.boxShadow = '0 0 10px #06b6d4';
+            }
+        }
+
+        function generateButtons() {
+            const area = document.getElementById('game-area');
+            area.innerHTML = '';
+            
+            const config = MODE_CONFIG[currentMode];
+            const count = config.buttonCount;
+            const correctIdx = Math.floor(Math.random() * count);
+
+            const usedPositions = [];
+
+            for (let i = 0; i < count; i++) {
+                const isCorrect = i === correctIdx;
+                const btn = document.createElement('button');
+                btn.className = `target-button ${isCorrect ? 'correct' : 'decoy'}`;
+                btn.innerText = isCorrect ? 'CLICA!' : 'NÃO!';
+                
+                let x, y, tooClose;
+                let attempts = 0;
+                do {
+                    x = Math.random() * 70 + 15;
+                    y = Math.random() * 70 + 15;
+                    tooClose = usedPositions.some(p => Math.abs(p.x - x) < 20 && Math.abs(p.y - y) < 20);
+                    attempts++;
+                } while (tooClose && attempts < 20);
+
+                usedPositions.push({x, y});
+
+                btn.style.left = `${x}%`;
+                btn.style.top = `${y}%`;
+                btn.style.transform = `translate(-50%, -50%) scale(${buttonScale})`;
+                
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    handleButtonClick(isCorrect);
+                };
+
+                area.appendChild(btn);
+            }
+        }
+
+        function handleButtonClick(isCorrect) {
+            if (!gameActive) return;
+
+            if (!isCorrect) {
+                endGame();
+                return;
+            }
+
+            score++;
+            document.getElementById('current-score').innerText = score;
+            
+            const config = MODE_CONFIG[currentMode];
+
+            maxTime = Math.max(config.minTime, config.initialTime - (score * config.timeReduction));
+            timeLeft = maxTime;
+            buttonScale = Math.max(0.35, config.initialScale - (score * config.scaleReduction));
+            
+            if (currentMode !== 'PRINCIPIANTE') {
+                overlayOpacity = Math.min(0.85, score * config.darknessIncrease);
+                document.getElementById('caos-overlay').style.opacity = overlayOpacity;
+            }
+
+            generateButtons();
+        }
+
+        function handleBackgroundClick() {
+            if (!gameActive) return;
+            
+            document.body.classList.add('shake');
+            setTimeout(() => document.body.classList.remove('shake'), 200);
+
+            if (currentMode === 'EXPERT') {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            gameActive = false;
+            if (gameTimer) clearInterval(gameTimer);
+
+            const key = `clique-fuga-record-${currentMode}`;
+            const best = parseInt(localStorage.getItem(key) || 0);
+            if (score > best) {
+                localStorage.setItem(key, score);
+            }
+
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-best').innerText = Math.max(score, best);
+            document.getElementById('go-mode-label').innerText = `MODO ${currentMode}`;
+            
+            const randomMsg = COMMENTS[Math.floor(Math.random() * COMMENTS.length)];
+            document.getElementById('ai-comment').innerText = `"${randomMsg}"`;
+
+            showScreen('gameover-screen');
+        }
+    </script>
 </body>
 </html>
